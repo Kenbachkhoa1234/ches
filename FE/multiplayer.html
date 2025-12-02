@@ -537,7 +537,6 @@
 
     <script>
         // ===== GLOBAL VARIABLES =====
-        let ws = null;
         let gameState = {
             gameId: null,
             playerColor: null,
@@ -546,7 +545,8 @@
             turn: 'white',
             selectedSquare: null,
             legalMoves: [],
-            gameOver: false
+            gameOver: false,
+            sessionId: null
         };
 
         // ===== CHESS PIECE UNICODE =====
@@ -554,31 +554,6 @@
             'p': '♟', 'n': '♞', 'b': '♝', 'r': '♜', 'q': '♛', 'k': '♚',
             'P': '♙', 'N': '♘', 'B': '♗', 'R': '♖', 'Q': '♕', 'K': '♔'
         };
-
-        // ===== INITIALIZATION =====
-        function initWebSocket() {
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            ws = new WebSocket(`${protocol}//${window.location.host}/ws/multiplayer`);
-
-            ws.onopen = () => {
-                console.log('✓ WebSocket kết nối thành công');
-            };
-
-            ws.onmessage = (event) => {
-                const message = JSON.parse(event.data);
-                console.log('[WS Message]', message);
-                handleWebSocketMessage(message);
-            };
-
-            ws.onerror = (error) => {
-                console.error('❌ WebSocket lỗi:', error);
-                showStatus('Lỗi kết nối! Hãy kiểm tra máy chủ.', 'error');
-            };
-
-            ws.onclose = () => {
-                console.log('⚠️ WebSocket đã đóng');
-            };
-        }
 
         // ===== UI SCREEN MANAGEMENT =====
         function showMenuScreen() {
@@ -630,7 +605,8 @@
                     turn: 'white',
                     selectedSquare: null,
                     legalMoves: [],
-                    gameOver: false
+                    gameOver: false,
+                    sessionId: null
                 };
                 showMenuScreen();
             }
@@ -646,84 +622,87 @@
             }
         }
 
-        function createRoom() {
-            if (!ws || ws.readyState !== WebSocket.OPEN) {
-                initWebSocket();
-                setTimeout(() => {
-                    ws.send(JSON.stringify({ action: 'create_room' }));
-                }, 500);
-            } else {
-                ws.send(JSON.stringify({ action: 'create_room' }));
+        async function createRoom() {
+            try {
+                const response = await fetch('/api/create_room', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await response.json();
+                
+                gameState.roomCode = data.room_code;
+                gameState.gameId = data.game_id;
+                gameState.playerColor = data.player_color;
+                
+                document.getElementById('createdRoomCode').style.display = 'block';
+                document.getElementById('displayRoomCode').textContent = data.room_code;
+                document.getElementById('actionBtn').style.display = 'none';
+                showStatus(data.message, 'success');
+                
+                // Poll để kiểm tra khi người chơi thứ 2 tham gia
+                pollForGameStart();
+            } catch (error) {
+                console.error('Lỗi tạo phòng:', error);
+                showStatus('Lỗi tạo phòng!', 'error');
             }
         }
 
-        function joinRoom() {
+        async function joinRoom() {
             const roomCode = document.getElementById('roomCodeInput').value.trim();
             if (!roomCode || roomCode.length !== 6) {
                 alert('Vui lòng nhập mã phòng 6 chữ số!');
                 return;
             }
 
-            if (!ws || ws.readyState !== WebSocket.OPEN) {
-                initWebSocket();
-                setTimeout(() => {
-                    ws.send(JSON.stringify({ action: 'join_room', room_code: roomCode }));
-                }, 500);
-            } else {
-                ws.send(JSON.stringify({ action: 'join_room', room_code: roomCode }));
+            try {
+                const response = await fetch(`/api/join_room/${roomCode}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showStatus(data.message, 'error');
+                    return;
+                }
+
+                gameState.gameId = data.game_id;
+                gameState.playerColor = data.player_color;
+                gameState.sessionId = data.session_id;
+                gameState.roomCode = roomCode;
+
+                renderBoard(data.game_status);
+                showGameScreen();
+                showStatus(data.message, 'info');
+            } catch (error) {
+                console.error('Lỗi tham gia phòng:', error);
+                showStatus('Lỗi tham gia phòng!', 'error');
             }
         }
 
-        // ===== WEBSOCKET MESSAGE HANDLER =====
-        function handleWebSocketMessage(message) {
-            const type = message.type;
+        async function pollForGameStart() {
+            if (!gameState.gameId || gameState.gameId === null) return;
 
-            if (type === 'room_created') {
-                gameState.roomCode = message.room_code;
-                gameState.gameId = message.game_id;
-                gameState.playerColor = message.player_color;
-                
-                document.getElementById('createdRoomCode').style.display = 'block';
-                document.getElementById('displayRoomCode').textContent = message.room_code;
-                document.getElementById('actionBtn').style.display = 'none';
-                showStatus(message.message, 'success');
+            try {
+                const response = await fetch(`/api/get_game/${gameState.gameId}`);
+                const data = await response.json();
+
+                // Kiểm tra nếu có người chơi thứ 2 tham gia (status thay đổi)
+                if (data.game_status) {
+                    // Nếu game đang chơi, bắt đầu game
+                    renderBoard(data.game_status);
+                    showGameScreen();
+                    showStatus('Người chơi khác đã tham gia! Trò chơi bắt đầu!', 'success');
+                    return;
+                }
+            } catch (error) {
+                console.error('Lỗi poll:', error);
             }
 
-            else if (type === 'game_start') {
-                gameState.gameId = message.game_id;
-                gameState.playerColor = message.player_color;
-                renderBoard(message.game_status);
-                showGameScreen();
-                showStatus(message.message, 'info');
-            }
-
-            else if (type === 'move_update') {
-                renderBoard(message.game_status);
-                const mover = message.last_move_by === gameState.playerColor ? 'Bạn' : 'Đối thủ';
-                showStatus(`${mover} vừa đi nước!`, 'success');
-                updateLegalMoves();
-            }
-
-            else if (type === 'game_over') {
-                gameState.gameOver = true;
-                showStatus(message.message, 'success');
-                document.querySelector('.btn-resign').disabled = true;
-                alert(message.message);
-            }
-
-            else if (type === 'error') {
-                showStatus(message.message, 'error');
-            }
-
-            else if (type === 'legal_moves') {
-                gameState.legalMoves = message.moves;
-                highlightLegalMoves();
-            }
-
-            else if (type === 'status') {
-                renderBoard(message.game_status);
-                updateLegalMoves();
-            }
+            // Poll mỗi 2 giây
+            setTimeout(pollForGameStart, 2000);
         }
 
         // ===== BOARD RENDERING =====
@@ -739,12 +718,10 @@
                     const square = document.createElement('div');
                     const squareId = String.fromCharCode(97 + col) + (8 - row);
                     
-                    // Xác định màu ô
                     const isLight = (row + col) % 2 === 0;
                     square.className = `square ${isLight ? 'light' : 'dark'}`;
                     square.dataset.square = squareId;
 
-                    // Thêm quân cờ
                     const piece = boardArray[row][col];
                     if (piece && piece !== '.') {
                         const pieceDiv = document.createElement('div');
@@ -762,7 +739,6 @@
                 }
             }
 
-            // Update thông tin lượt đi
             const isMyTurn = status.turn === gameState.playerColor;
             const turnText = isMyTurn ? '🟢 Lượt của bạn' : '⚫ Lượt đối thủ';
             
@@ -774,16 +750,19 @@
                 document.getElementById('blackStatus').innerHTML = `👤 Bạn<br>${turnText}`;
             }
 
-            // Update trạng thái trò chơi
             if (status.game_over) {
                 const result = status.outcome;
                 let resultText = 'Hòa!';
                 if (result === '1-0') resultText = 'Trắng thắng!';
                 if (result === '0-1') resultText = 'Đen thắng!';
                 showStatus(`🏁 Trò chơi kết thúc - ${resultText}`, 'success');
+                gameState.gameOver = true;
             } else {
                 showStatus(turnText, 'info');
             }
+
+            gameState.turn = status.turn;
+            gameState.legalMoves = status.legal_moves || [];
         }
 
         function fenToBoard(fen) {
@@ -807,13 +786,6 @@
 
         // ===== PIECE SELECTION & MOVE =====
         function selectPiece(square) {
-            // Lấy danh sách nước đi hợp lệ
-            if (!ws || ws.readyState !== WebSocket.OPEN) return;
-
-            ws.send(JSON.stringify({
-                action: 'get_legal_moves'
-            }));
-
             gameState.selectedSquare = square;
             highlightSelectedSquare();
         }
@@ -824,35 +796,65 @@
             const selectedSquare = gameState.selectedSquare;
             const move = selectedSquare + square;
 
-            // Kiểm tra nước đi hợp lệ
             if (gameState.legalMoves.includes(move)) {
                 makeMove(move);
             } else {
-                // Bỏ chọn
                 gameState.selectedSquare = null;
                 clearHighlights();
                 selectPiece(square);
             }
         }
 
-        function makeMove(uci) {
-            if (!ws || ws.readyState !== WebSocket.OPEN) {
-                showStatus('Lỗi kết nối!', 'error');
-                return;
-            }
-
+        async function makeMove(uci) {
             if (gameState.gameOver) {
                 showStatus('Trò chơi đã kết thúc!', 'error');
                 return;
             }
 
-            ws.send(JSON.stringify({
-                action: 'move',
-                uci: uci
-            }));
+            try {
+                const response = await fetch(`/api/make_move/${gameState.gameId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        uci: uci,
+                        player_color: gameState.playerColor
+                    })
+                });
 
-            gameState.selectedSquare = null;
-            clearHighlights();
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showStatus(data.message, 'error');
+                    return;
+                }
+
+                renderBoard(data.game_status);
+                showStatus(`${gameState.playerColor === 'white' ? 'Bạn' : 'Đối thủ'} vừa đi nước!`, 'success');
+
+                gameState.selectedSquare = null;
+                clearHighlights();
+
+                // Poll để cập nhật bàn cờ từ người chơi khác
+                setTimeout(() => pollGameStatus(), 1000);
+            } catch (error) {
+                console.error('Lỗi thực hiện nước đi:', error);
+                showStatus('Lỗi thực hiện nước đi!', 'error');
+            }
+        }
+
+        async function pollGameStatus() {
+            if (!gameState.gameId) return;
+
+            try {
+                const response = await fetch(`/api/get_game/${gameState.gameId}`);
+                const data = await response.json();
+
+                if (data.game_status) {
+                    renderBoard(data.game_status);
+                }
+            } catch (error) {
+                console.error('Lỗi poll status:', error);
+            }
         }
 
         // ===== HIGHLIGHTING =====
@@ -878,7 +880,6 @@
                 baseSquare.classList.add('selected');
             }
 
-            // Highlight các nước đi hợp lệ
             for (let move of gameState.legalMoves) {
                 if (move.startsWith(gameState.selectedSquare)) {
                     const targetSquare = move.substring(2, 4);
@@ -902,14 +903,22 @@
         }
 
         // ===== GAME CONTROLS =====
-        function updateLegalMoves() {
-            if (!ws || ws.readyState !== WebSocket.OPEN) return;
-            ws.send(JSON.stringify({ action: 'get_legal_moves' }));
-        }
-
-        function resignGame() {
+        async function resignGame() {
             if (confirm('Bạn có chắc muốn đầu hàng?')) {
-                ws.send(JSON.stringify({ action: 'resign' }));
+                try {
+                    const response = await fetch(`/api/resign/${gameState.gameId}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ player_color: gameState.playerColor })
+                    });
+
+                    const data = await response.json();
+                    showStatus(data.message, 'success');
+                    gameState.gameOver = true;
+                } catch (error) {
+                    console.error('Lỗi đầu hàng:', error);
+                    showStatus('Lỗi đầu hàng!', 'error');
+                }
             }
         }
 
@@ -922,7 +931,6 @@
 
         // ===== INITIALIZE ON LOAD =====
         window.addEventListener('load', () => {
-            initWebSocket();
             showMenuScreen();
         });
     </script>
