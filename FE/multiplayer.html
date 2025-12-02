@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cờ Vua Multiplayer - Người vs Người</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        /* ===== MENU SCREEN ===== */
+        #menuScreen {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+
+        .menu-title {
+            font-size: 48px;
+            color: #333;
+            margin-bottom: 30px;
+            font-weight: bold;
+        }
+
+        .menu-subtitle {
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 40px;
+        }
+
+        .menu-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .btn-menu {
+            padding: 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+        }
+
+        .btn-create {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .btn-create:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-join {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .btn-join:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(245, 87, 108, 0.4);
+        }
+
+        /* ===== ROOM CODE INPUT ===== */
+        #roomCodeScreen {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .screen-title {
+            font-size: 32px;
+            color: #333;
+            margin-bottom: 30px;
+            font-weight: bold;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 10px;
+            color: #666;
+            font-weight: 600;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 15px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #999;
+        }
+
+        .btn-secondary:hover {
+            background: #777;
+        }
+
+        .info-box {
+            background: #f0f7ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            color: #333;
+        }
+
+        /* ===== GAME SCREEN ===== */
+        #gameScreen {
+            display: none;
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+        }
+
+        .game-area {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .board-wrapper {
+            background: #8b7355;
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+
+        #chessboard {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 0;
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .square {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+            position: relative;
+        }
+
+        .square.light {
+            background: #f0d9b5;
+        }
+
+        .square.dark {
+            background: #b58863;
+        }
+
+        .square.highlight {
+            background: #baca44 !important;
+            box-shadow: inset 0 0 0 2px #8b7355;
+        }
+
+        .square.selected {
+            background: #7fc97f !important;
+            box-shadow: inset 0 0 0 3px #333;
+        }
+
+        .square.legal-move::after {
+            content: '';
+            width: 20px;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 50%;
+            position: absolute;
+        }
+
+        .square.legal-capture::after {
+            content: '';
+            width: 100%;
+            height: 100%;
+            border: 3px solid rgba(0, 0, 0, 0.3);
+            border-radius: 2px;
+            position: absolute;
+        }
+
+        .piece {
+            font-size: 45px;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: grab;
+            user-select: none;
+        }
+
+        .piece:active {
+            cursor: grabbing;
+        }
+
+        .game-info {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            height: fit-content;
+        }
+
+        .player-info {
+            text-align: center;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f5f5f5;
+        }
+
+        .player-label {
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .player-color {
+            font-size: 32px;
+            margin-bottom: 5px;
+        }
+
+        .current-turn {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 14px;
+        }
+
+        .status-box {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #856404;
+            text-align: center;
+        }
+
+        .status-box.error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+
+        .status-box.success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+
+        .status-box.info {
+            background: #d1ecf1;
+            border-color: #bee5eb;
+            color: #0c5460;
+        }
+
+        .game-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .btn-game {
+            padding: 12px;
+            font-size: 14px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+            width: 100%;
+        }
+
+        .btn-resign {
+            background: #e74c3c;
+        }
+
+        .btn-resign:hover {
+            background: #c0392b;
+        }
+
+        .btn-back {
+            background: #95a5a6;
+        }
+
+        .btn-back:hover {
+            background: #7f8c8d;
+        }
+
+        .move-history {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 12px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+
+        .move-history h4 {
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .move-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+        }
+
+        .move-item {
+            background: white;
+            padding: 5px;
+            border-radius: 3px;
+            text-align: center;
+            color: #666;
+        }
+
+        /* ===== LOADING & MESSAGES ===== */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .message {
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            #gameScreen {
+                grid-template-columns: 1fr;
+            }
+
+            .menu-buttons {
+                grid-template-columns: 1fr;
+            }
+
+            .button-group {
+                grid-template-columns: 1fr;
+            }
+
+            #chessboard {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- MENU SCREEN -->
+        <div id="menuScreen">
+            <div class="menu-title">♔ Cờ Vua Multiplayer ♚</div>
+            <div class="menu-subtitle">Đánh cờ với người chơi khác qua mạng</div>
+            <div class="menu-buttons">
+                <button class="btn-menu btn-create" onclick="showCreateRoom()">📋 Tạo Phòng Mới</button>
+                <button class="btn-menu btn-join" onclick="showJoinRoom()">🔓 Tham Gia Phòng</button>
+            </div>
+        </div>
+
+        <!-- ROOM CODE SCREEN -->
+        <div id="roomCodeScreen" style="display: none;">
+            <div class="screen-title" id="roomCodeTitle">Tạo Phòng Chơi Mới</div>
+            
+            <div class="info-box" id="infoBox">
+                Nhấn nút "Tạo Phòng" để tạo một phòng chơi. Bạn sẽ nhận được mã phòng để chia sẻ với bạn bè.
+            </div>
+
+            <div class="input-group" id="roomCodeInputGroup" style="display: none;">
+                <label for="roomCodeInput">Nhập Mã Phòng:</label>
+                <input type="text" id="roomCodeInput" placeholder="Ví dụ: 123456" maxlength="6">
+            </div>
+
+            <div id="createdRoomCode" style="display: none;">
+                <label>Mã Phòng Của Bạn:</label>
+                <div style="
+                    background: #667eea;
+                    color: white;
+                    padding: 20px;
+                    border-radius: 8px;
+                    font-size: 32px;
+                    font-weight: bold;
+                    text-align: center;
+                    margin-bottom: 15px;
+                    letter-spacing: 5px;
+                    font-family: monospace;
+                ">
+                    <span id="displayRoomCode"></span>
+                </div>
+                <p style="color: #666; text-align: center; margin-bottom: 15px;">
+                    🔄 Đợi người chơi khác tham gia... <span class="loading-spinner"></span>
+                </p>
+            </div>
+
+            <div class="button-group">
+                <button class="btn btn-primary" id="actionBtn" onclick="actionRoom()">Tạo Phòng</button>
+                <button class="btn btn-secondary" onclick="backToMenu()">← Quay Lại</button>
+            </div>
+        </div>
+
+        <!-- GAME SCREEN -->
+        <div id="gameScreen">
+            <div class="game-area">
+                <div class="board-wrapper">
+                    <div id="chessboard"></div>
+                </div>
+                <div id="gameMessages"></div>
+            </div>
+
+            <div class="game-info">
+                <div class="player-info" id="playerInfoWhite">
+                    <div class="player-label">Người Chơi 1 (Trắng)</div>
+                    <div class="player-color">♔</div>
+                    <div id="whiteStatus">Chờ...</div>
+                </div>
+
+                <div class="player-info" id="playerInfoBlack">
+                    <div class="player-label">Người Chơi 2 (Đen)</div>
+                    <div class="player-color">♚</div>
+                    <div id="blackStatus">Chờ...</div>
+                </div>
+
+                <div id="statusBox" class="status-box info">Khởi tạo trò chơi...</div>
+
+                <div class="move-history">
+                    <h4>Lịch Sử Nước Đi</h4>
+                    <div id="moveHistory" class="move-list"></div>
+                </div>
+
+                <div class="game-controls">
+                    <button class="btn-game btn-resign" onclick="resignGame()">🏳️ Đầu Hàng</button>
+                    <button class="btn-game btn-back" onclick="backToMenu()">← Thoát Trò Chơi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== GLOBAL VARIABLES =====
+        let ws = null;
+        let gameState = {
+            gameId: null,
+            playerColor: null,
+            roomCode: null,
+            board: {},
+            turn: 'white',
+            selectedSquare: null,
+            legalMoves: [],
+            gameOver: false
+        };
+
+        // ===== CHESS PIECE UNICODE =====
+        const pieces = {
+            'p': '♟', 'n': '♞', 'b': '♝', 'r': '♜', 'q': '♛', 'k': '♚',
+            'P': '♙', 'N': '♘', 'B': '♗', 'R': '♖', 'Q': '♕', 'K': '♔'
+        };
+
+        // ===== INITIALIZATION =====
+        function initWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}/ws/multiplayer`);
+
+            ws.onopen = () => {
+                console.log('✓ WebSocket kết nối thành công');
+            };
+
+            ws.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                console.log('[WS Message]', message);
+                handleWebSocketMessage(message);
+            };
+
+            ws.onerror = (error) => {
+                console.error('❌ WebSocket lỗi:', error);
+                showStatus('Lỗi kết nối! Hãy kiểm tra máy chủ.', 'error');
+            };
+
+            ws.onclose = () => {
+                console.log('⚠️ WebSocket đã đóng');
+            };
+        }
+
+        // ===== UI SCREEN MANAGEMENT =====
+        function showMenuScreen() {
+            document.getElementById('menuScreen').style.display = 'block';
+            document.getElementById('roomCodeScreen').style.display = 'none';
+            document.getElementById('gameScreen').style.display = 'none';
+        }
+
+        function showRoomCodeScreen() {
+            document.getElementById('menuScreen').style.display = 'none';
+            document.getElementById('roomCodeScreen').style.display = 'block';
+            document.getElementById('gameScreen').style.display = 'none';
+        }
+
+        function showGameScreen() {
+            document.getElementById('menuScreen').style.display = 'none';
+            document.getElementById('roomCodeScreen').style.display = 'none';
+            document.getElementById('gameScreen').style.display = 'grid';
+        }
+
+        function showCreateRoom() {
+            document.getElementById('roomCodeTitle').textContent = '📋 Tạo Phòng Mới';
+            document.getElementById('infoBox').innerHTML = 'Nhấn nút "Tạo Phòng" để tạo một phòng chơi mới. Bạn sẽ nhận được mã phòng để chia sẻ với bạn bè.';
+            document.getElementById('roomCodeInputGroup').style.display = 'none';
+            document.getElementById('createdRoomCode').style.display = 'none';
+            document.getElementById('actionBtn').textContent = 'Tạo Phòng';
+            document.getElementById('actionBtn').dataset.mode = 'create';
+            showRoomCodeScreen();
+        }
+
+        function showJoinRoom() {
+            document.getElementById('roomCodeTitle').textContent = '🔓 Tham Gia Phòng';
+            document.getElementById('infoBox').innerHTML = 'Nhập mã phòng của bạn bè để tham gia vào trò chơi của họ.';
+            document.getElementById('roomCodeInputGroup').style.display = 'block';
+            document.getElementById('createdRoomCode').style.display = 'none';
+            document.getElementById('actionBtn').textContent = 'Tham Gia';
+            document.getElementById('actionBtn').dataset.mode = 'join';
+            document.getElementById('roomCodeInput').value = '';
+            showRoomCodeScreen();
+        }
+
+        function backToMenu() {
+            if (confirm('Bạn có muốn rời khỏi trò chơi?')) {
+                gameState = {
+                    gameId: null,
+                    playerColor: null,
+                    roomCode: null,
+                    board: {},
+                    turn: 'white',
+                    selectedSquare: null,
+                    legalMoves: [],
+                    gameOver: false
+                };
+                showMenuScreen();
+            }
+        }
+
+        // ===== ROOM MANAGEMENT =====
+        function actionRoom() {
+            const mode = document.getElementById('actionBtn').dataset.mode;
+            if (mode === 'create') {
+                createRoom();
+            } else if (mode === 'join') {
+                joinRoom();
+            }
+        }
+
+        function createRoom() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                initWebSocket();
+                setTimeout(() => {
+                    ws.send(JSON.stringify({ action: 'create_room' }));
+                }, 500);
+            } else {
+                ws.send(JSON.stringify({ action: 'create_room' }));
+            }
+        }
+
+        function joinRoom() {
+            const roomCode = document.getElementById('roomCodeInput').value.trim();
+            if (!roomCode || roomCode.length !== 6) {
+                alert('Vui lòng nhập mã phòng 6 chữ số!');
+                return;
+            }
+
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                initWebSocket();
+                setTimeout(() => {
+                    ws.send(JSON.stringify({ action: 'join_room', room_code: roomCode }));
+                }, 500);
+            } else {
+                ws.send(JSON.stringify({ action: 'join_room', room_code: roomCode }));
+            }
+        }
+
+        // ===== WEBSOCKET MESSAGE HANDLER =====
+        function handleWebSocketMessage(message) {
+            const type = message.type;
+
+            if (type === 'room_created') {
+                gameState.roomCode = message.room_code;
+                gameState.gameId = message.game_id;
+                gameState.playerColor = message.player_color;
+                
+                document.getElementById('createdRoomCode').style.display = 'block';
+                document.getElementById('displayRoomCode').textContent = message.room_code;
+                document.getElementById('actionBtn').style.display = 'none';
+                showStatus(message.message, 'success');
+            }
+
+            else if (type === 'game_start') {
+                gameState.gameId = message.game_id;
+                gameState.playerColor = message.player_color;
+                renderBoard(message.game_status);
+                showGameScreen();
+                showStatus(message.message, 'info');
+            }
+
+            else if (type === 'move_update') {
+                renderBoard(message.game_status);
+                const mover = message.last_move_by === gameState.playerColor ? 'Bạn' : 'Đối thủ';
+                showStatus(`${mover} vừa đi nước!`, 'success');
+                updateLegalMoves();
+            }
+
+            else if (type === 'game_over') {
+                gameState.gameOver = true;
+                showStatus(message.message, 'success');
+                document.querySelector('.btn-resign').disabled = true;
+                alert(message.message);
+            }
+
+            else if (type === 'error') {
+                showStatus(message.message, 'error');
+            }
+
+            else if (type === 'legal_moves') {
+                gameState.legalMoves = message.moves;
+                highlightLegalMoves();
+            }
+
+            else if (type === 'status') {
+                renderBoard(message.game_status);
+                updateLegalMoves();
+            }
+        }
+
+        // ===== BOARD RENDERING =====
+        function renderBoard(status) {
+            const board = document.getElementById('chessboard');
+            board.innerHTML = '';
+
+            const fen = status.fen;
+            const boardArray = fenToBoard(fen);
+
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const square = document.createElement('div');
+                    const squareId = String.fromCharCode(97 + col) + (8 - row);
+                    
+                    // Xác định màu ô
+                    const isLight = (row + col) % 2 === 0;
+                    square.className = `square ${isLight ? 'light' : 'dark'}`;
+                    square.dataset.square = squareId;
+
+                    // Thêm quân cờ
+                    const piece = boardArray[row][col];
+                    if (piece && piece !== '.') {
+                        const pieceDiv = document.createElement('div');
+                        pieceDiv.className = 'piece';
+                        pieceDiv.textContent = pieces[piece];
+                        pieceDiv.onclick = (e) => {
+                            e.stopPropagation();
+                            selectPiece(squareId);
+                        };
+                        square.appendChild(pieceDiv);
+                    }
+
+                    square.onclick = () => handleSquareClick(squareId);
+                    board.appendChild(square);
+                }
+            }
+
+            // Update thông tin lượt đi
+            const isMyTurn = status.turn === gameState.playerColor;
+            const turnText = isMyTurn ? '🟢 Lượt của bạn' : '⚫ Lượt đối thủ';
+            
+            if (gameState.playerColor === 'white') {
+                document.getElementById('whiteStatus').innerHTML = `👤 Bạn<br>${turnText}`;
+                document.getElementById('blackStatus').innerHTML = `👥 Đối thủ`;
+            } else {
+                document.getElementById('whiteStatus').innerHTML = `👥 Đối thủ`;
+                document.getElementById('blackStatus').innerHTML = `👤 Bạn<br>${turnText}`;
+            }
+
+            // Update trạng thái trò chơi
+            if (status.game_over) {
+                const result = status.outcome;
+                let resultText = 'Hòa!';
+                if (result === '1-0') resultText = 'Trắng thắng!';
+                if (result === '0-1') resultText = 'Đen thắng!';
+                showStatus(`🏁 Trò chơi kết thúc - ${resultText}`, 'success');
+            } else {
+                showStatus(turnText, 'info');
+            }
+        }
+
+        function fenToBoard(fen) {
+            const board = [];
+            const rows = fen.split(' ')[0].split('/');
+            for (let row of rows) {
+                const boardRow = [];
+                for (let char of row) {
+                    if (isNaN(char)) {
+                        boardRow.push(char);
+                    } else {
+                        for (let i = 0; i < parseInt(char); i++) {
+                            boardRow.push('.');
+                        }
+                    }
+                }
+                board.push(boardRow);
+            }
+            return board;
+        }
+
+        // ===== PIECE SELECTION & MOVE =====
+        function selectPiece(square) {
+            // Lấy danh sách nước đi hợp lệ
+            if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+            ws.send(JSON.stringify({
+                action: 'get_legal_moves'
+            }));
+
+            gameState.selectedSquare = square;
+            highlightSelectedSquare();
+        }
+
+        function handleSquareClick(square) {
+            if (!gameState.selectedSquare) return;
+
+            const selectedSquare = gameState.selectedSquare;
+            const move = selectedSquare + square;
+
+            // Kiểm tra nước đi hợp lệ
+            if (gameState.legalMoves.includes(move)) {
+                makeMove(move);
+            } else {
+                // Bỏ chọn
+                gameState.selectedSquare = null;
+                clearHighlights();
+                selectPiece(square);
+            }
+        }
+
+        function makeMove(uci) {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                showStatus('Lỗi kết nối!', 'error');
+                return;
+            }
+
+            if (gameState.gameOver) {
+                showStatus('Trò chơi đã kết thúc!', 'error');
+                return;
+            }
+
+            ws.send(JSON.stringify({
+                action: 'move',
+                uci: uci
+            }));
+
+            gameState.selectedSquare = null;
+            clearHighlights();
+        }
+
+        // ===== HIGHLIGHTING =====
+        function highlightSelectedSquare() {
+            clearHighlights();
+            if (!gameState.selectedSquare) return;
+
+            const square = document.querySelector(`[data-square="${gameState.selectedSquare}"]`);
+            if (square) {
+                square.classList.add('selected');
+            }
+
+            highlightLegalMoves();
+        }
+
+        function highlightLegalMoves() {
+            clearHighlights();
+
+            if (!gameState.selectedSquare) return;
+
+            const baseSquare = document.querySelector(`[data-square="${gameState.selectedSquare}"]`);
+            if (baseSquare) {
+                baseSquare.classList.add('selected');
+            }
+
+            // Highlight các nước đi hợp lệ
+            for (let move of gameState.legalMoves) {
+                if (move.startsWith(gameState.selectedSquare)) {
+                    const targetSquare = move.substring(2, 4);
+                    const square = document.querySelector(`[data-square="${targetSquare}"]`);
+                    if (square) {
+                        const hasPiece = square.querySelector('.piece');
+                        if (hasPiece) {
+                            square.classList.add('legal-capture');
+                        } else {
+                            square.classList.add('legal-move');
+                        }
+                    }
+                }
+            }
+        }
+
+        function clearHighlights() {
+            document.querySelectorAll('.square').forEach(sq => {
+                sq.classList.remove('selected', 'legal-move', 'legal-capture', 'highlight');
+            });
+        }
+
+        // ===== GAME CONTROLS =====
+        function updateLegalMoves() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) return;
+            ws.send(JSON.stringify({ action: 'get_legal_moves' }));
+        }
+
+        function resignGame() {
+            if (confirm('Bạn có chắc muốn đầu hàng?')) {
+                ws.send(JSON.stringify({ action: 'resign' }));
+            }
+        }
+
+        // ===== STATUS MESSAGES =====
+        function showStatus(message, type = 'info') {
+            const box = document.getElementById('statusBox');
+            box.className = `status-box ${type}`;
+            box.textContent = message;
+        }
+
+        // ===== INITIALIZE ON LOAD =====
+        window.addEventListener('load', () => {
+            initWebSocket();
+            showMenuScreen();
+        });
+    </script>
+</body>
+</html>
