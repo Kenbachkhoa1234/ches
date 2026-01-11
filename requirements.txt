@@ -1,4 +1,4 @@
 Flask==2.3.3
 flask-sock==0.7.0
 python-chess==0.29.0
-Werkzeug==2.3.7
+Werkzeug==3.1.4
